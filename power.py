@@ -1,12 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import RPi.GPIO as GPIO
 import datetime
 import os.path as path
 from datetime import date
 import calendar
+from libraryCH.device.i2cLCD import i2cLCD
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(14, GPIO.OUT)
 GPIO.output(14, GPIO.LOW)
+
+lcd = i2cLCD(addr=0x27, width=16)
 
 def time_in_range(start, end, x):
     """Return true if x is in the range [start, end]"""
@@ -47,6 +53,9 @@ for line in f:
 f.close()
 
 powerStatus = False
+
+#lcd.display("Good morning!", 1)
+lcd.clear(1)
 
 while True:
     now = datetime.datetime.now().time()
