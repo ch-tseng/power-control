@@ -57,14 +57,18 @@ powerStatus = False
 
 #lcd.display("Good morning!", 1)
 #lcd.clear()
+lcd.display("                ", 0)
+lcd.display("                ", 1)
+
 lcd.display("Power Controller", 0)
 lcd.display("made by CH.Tseng", 1)
 time.sleep(3)
-
+ii = 0
 lastCMD = 0
 
 while True:
     now = datetime.datetime.now().time()
+    #nowDisplay = now.strftime('%H:%M')
     cmd = 0
     timeID = 0
     displayTXT = ""
@@ -75,13 +79,13 @@ while True:
         #print("startTime:{}, endTime:{}".format(startTime, endTime) )
         if(time_in_range(startTime, endTime, now) == True):
             cmd = cmd + 1
-            displayTXT = "ON: " + startTime.strftime('%H:%M') + "-" + endTime.strftime('%H:%M')
+            displayTXT = " " + startTime.strftime('%H:%M') + " to " + endTime.strftime('%H:%M')
 
         i += 1
 
     if(lastCMD!=cmd):
-        print(displayTXT )
-        lcd.display(displayTXT , 0)
+        #print(displayTXT )
+        lcd.display(displayTXT , 1)
         lastCMD = cmd
 
         if(cmd > 0):
@@ -93,12 +97,34 @@ while True:
                 GPIO.output(14, GPIO.LOW)
                 powerStatus = False
 
+        time.sleep(1)
+
     else:
-        if(cmd==0): lcd.display("Power is off now", 0)
+        
         for id in range(i):
-           print("i={}, len={}".format(id,len(startList)))
+           now = datetime.datetime.now().time()
+
+           if(cmd==0): lcd.display(now.strftime('%H:%M') + " Power Off", 0)
+
+           #print("i={}, len={}".format(id,len(startList)))
            start = startList[id]
            end = endList[id]
-           lcd.display("Next:"+start.strftime('%H:%M') + "-" + end.strftime('%H:%M'), 1)
+           #lcd.display("Next:"+start.strftime('%H:%M') + "-" + end.strftime('%H:%M'), 1)
            #print(startTime[id].strftime('%H:%M') + "-" + endTime[id].strftime('%H:%M'))
+           if(ii%2 == 1):
+               displayNow = now.strftime('%H %M')
+               ii = 0
+           else:
+               displayNow =  now.strftime('%H:%M')
+               ii = 1
+
+           if(cmd>0):
+               lcd.display(displayNow + " Power ON", 0)
+               #lcd.display(displayTXT, 1)
+           else:
+               lcd.display(displayNow + " Power OFF", 0)
+               lcd.display("Next:"+start.strftime('%H:%M') + "-" + end.strftime('%H:%M'), 1)
+
            time.sleep(1)
+
+    #time.sleep(1)
