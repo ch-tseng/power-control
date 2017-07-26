@@ -10,11 +10,11 @@ import calendar
 from libraryCH.device.i2cLCD import i2cLCD
 import subprocess
 
-GPIO.setmode(GPIO.BCM)
+GPIO.setmode(GPIO.B CM)
 GPIO.setup(14, GPIO.OUT)
 GPIO.output(14, GPIO.LOW)
 
-lcd = i2cLCD(addr=0x27, width=16)
+lcd = i2cLCD(adr=0x27, width=16)
 
 startList = []
 endList = []
@@ -66,9 +66,7 @@ def readSchedule():
         endList = []
 
         for line in f:
-            lineString = line.replace("\n","").replace("\x13","")
-            print("Line=",lineString)
-            
+            lineString = line.replace("\n","")
             (startTime, endTime)  = (lineString.split("~"))
             hms_s = startTime.split(":")
             hms_e = endTime.split(":")
