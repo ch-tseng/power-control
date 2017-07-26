@@ -8,12 +8,26 @@ from datetime import date
 import time
 import calendar
 from libraryCH.device.i2cLCD import i2cLCD
+import subprocess
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(14, GPIO.OUT)
 GPIO.output(14, GPIO.LOW)
 
 lcd = i2cLCD(addr=0x27, width=16)
+
+startList = []
+endList = []
+powerStatus = False
+
+lcd.display("Power Controller", 0)
+lcd.display("made by CH.Tseng", 1)
+time.sleep(3)
+ii = 0
+ii_net = 0
+lastCMD = 0
+lastDate = 0
+
 
 def time_in_range(start, end, x):
     """Return true if x is in the range [start, end]"""
@@ -22,53 +36,63 @@ def time_in_range(start, end, x):
     else:
         return start <= x or x <= end
 
-my_date = date.today()
-fileName = "/boot/poweron/" + calendar.day_name[my_date.weekday()] + ".txt"
-if(path.isfile(fileName)==False): fileName="/boot/poweron/Others.txt"
-print(fileName)
+def getIP(interface):
+    address = subprocess.check_output("/sbin/ifconfig " + interface + " | grep inet | grep -v inet6 | awk '{print $2}' | sed 's/addr://'i", shell=True)
+    #address = address.decode('utf-8')
+    return str(address)
 
-f = open(fileName,"r")
-startList = []
-endList = []
+def displayIP():
+    global ii_net
 
-for line in f:
-    lineString = line.replace("\n","")
-    (startTime, endTime)  = (lineString.split("~"))
-    hms_s = startTime.split(":")
-    hms_e = endTime.split(":")
+    if(ii_net==0):
+        lcd.display( getIP("eth0"), 0)
+        ii_net = 1
+    else:
+        lcd.display( getIP("wlan0"), 0)
+        ii_net = 0
 
-    if(int(hms_s[0])>23): hms_s[0]="23"
-    if(int(hms_e[0])>23): hms_e[0]="23"
-    if(int(hms_s[1])>59): hms_s[1]="59"
-    if(int(hms_e[1])>59): hms_e[1]="59"
-    if(int(hms_s[2])>59): hms_s[2]="59"
-    if(int(hms_e[2])>59): hms_e[2]="59"
+#Read schedule file
+def readSchedule():
+    global startList, endList, lastDate
+    my_date = date.today()
+
+    if(my_date != lastDate):
+        fileName = "/boot/poweron/" + calendar.day_name[my_date.weekday()] + ".txt"
+        if(path.isfile(fileName)==False): fileName="/boot/poweron/Others.txt"
+        print(fileName)
+
+        f = open(fileName,"r")
+        startList = []
+        endList = []
+
+        for line in f:
+            lineString = line.replace("\n","")
+            (startTime, endTime)  = (lineString.split("~"))
+            hms_s = startTime.split(":")
+            hms_e = endTime.split(":")
+
+            if(int(hms_s[0])>23): hms_s[0]="23"
+            if(int(hms_e[0])>23): hms_e[0]="23"
+            if(int(hms_s[1])>59): hms_s[1]="59"
+            if(int(hms_e[1])>59): hms_e[1]="59"
+            if(int(hms_s[2])>59): hms_s[2]="59"
+            if(int(hms_e[2])>59): hms_e[2]="59"
 
 
-    timeStart = datetime.time(int(hms_s[0]), int(hms_s[1]), int(hms_s[2]))
-    timeEnd = datetime.time(int(hms_e[0]), int(hms_e[1]), int(hms_e[2]))
+            timeStart = datetime.time(int(hms_s[0]), int(hms_s[1]), int(hms_s[2]))
+            timeEnd = datetime.time(int(hms_e[0]), int(hms_e[1]), int(hms_e[2]))
 
-    startList.append(timeStart)
-    endList.append(timeEnd)
+            startList.append(timeStart)
+            endList.append(timeEnd)
 
-f.close()
+        f.close()
 
-powerStatus = False
-
-#lcd.display("Good morning!", 1)
-#lcd.clear()
-lcd.display("                ", 0)
-lcd.display("                ", 1)
-
-lcd.display("Power Controller", 0)
-lcd.display("made by CH.Tseng", 1)
-time.sleep(3)
-ii = 0
-lastCMD = 0
+        lastDate = my_date
 
 while True:
+    readSchedule()
+
     now = datetime.datetime.now().time()
-    #nowDisplay = now.strftime('%H:%M')
     cmd = 0
     timeID = 0
     displayTXT = ""
@@ -84,7 +108,6 @@ while True:
         i += 1
 
     if(lastCMD!=cmd):
-        #print(displayTXT )
         lcd.display(displayTXT , 1)
         lastCMD = cmd
 
@@ -100,13 +123,10 @@ while True:
         time.sleep(1)
 
     else:
-        
+        #print("i=",i)
         for id in range(i):
            now = datetime.datetime.now().time()
 
-           if(cmd==0): lcd.display(now.strftime('%H:%M') + " Power Off", 0)
-
-           #print("i={}, len={}".format(id,len(startList)))
            start = startList[id]
            end = endList[id]
            #lcd.display("Next:"+start.strftime('%H:%M') + "-" + end.strftime('%H:%M'), 1)
@@ -118,13 +138,23 @@ while True:
                displayNow =  now.strftime('%H:%M')
                ii = 1
 
+           
            if(cmd>0):
-               lcd.display(displayNow + " Power ON", 0)
-               #lcd.display(displayTXT, 1)
+               if(ii==0): 
+                   displayIP()
+
+               else:
+                   lcd.display(displayNow + " ---> ON", 0)
+                   lcd.display(displayTXT, 1)
+
            else:
-               lcd.display(displayNow + " Power OFF", 0)
-               lcd.display("Next:"+start.strftime('%H:%M') + "-" + end.strftime('%H:%M'), 1)
+               if(ii==0):
+                   displayIP()
+               else:
+                   lcd.display(displayNow + " ---> OFF", 0)
+
+               lcd.display("Next "+start.strftime('%H:%M') + "-" + end.strftime('%H:%M'), 1)
 
            time.sleep(1)
-
+  
     #time.sleep(1)
