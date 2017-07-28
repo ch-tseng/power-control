@@ -2,3 +2,8 @@ power.py:13: RuntimeWarning: This channel is already in use, continuing anyway. 
   GPIO.setup(14, GPIO.OUT)
 power.py:13: RuntimeWarning: This channel is already in use, continuing anyway.  Use GPIO.setwarnings(False) to disable warnings.
   GPIO.setup(14, GPIO.OUT)
+/boot/poweron/Others.txt
+Traceback (most recent call last):
+  File "power.py", line 30, in <module>
+    f = open(fileName,"r")
+IOError: [Errno 2] No such file or directory: '/boot/poweron/Others.txt'
