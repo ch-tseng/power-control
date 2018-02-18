@@ -38,18 +38,25 @@ def time_in_range(start, end, x):
 
 def getIP(interface):
     address = subprocess.check_output("/sbin/ifconfig " + interface + " | grep inet | grep -v inet6 | awk '{print $2}' | sed 's/addr://'i", shell=True)
-    #address = address.decode('utf-8')
-    return str(address)
+    address = address.decode('utf-8')
+    address = address.rstrip()
+    return address
+    #return str(address)
 
 def displayIP():
     global ii_net
+    IP1 = getIP("eth0")
+    IP2 = getIP("wlan0")
+    ii_net += 1
 
-    if(ii_net==0):
-        lcd.display( getIP("eth0"), 0)
-        ii_net = 1
+    if(ii_net%2==0):
+        if(len(IP1)>0):
+            lcd.display( "IP:"+IP1, 0)
     else:
-        lcd.display( getIP("wlan0"), 0)
-        ii_net = 0
+        if(len(IP2)>0):
+            lcd.display( "IP:"+IP2, 0)
+
+    if(ii_net>=100): ii_net=0
 
 #Read schedule file
 def readSchedule():
@@ -57,8 +64,8 @@ def readSchedule():
     my_date = date.today()
 
     if(my_date != lastDate):
-        fileName = "/boot/poweron/" + calendar.day_name[my_date.weekday()] + ".txt"
-        if(path.isfile(fileName)==False): fileName="/boot/poweron/Others.txt"
+        fileName = "schedules/" + calendar.day_name[my_date.weekday()] + ".txt"
+        if(path.isfile(fileName)==False): fileName="schedules/Others.txt"
         print(fileName)
 
         f = open(fileName,"r")
@@ -146,14 +153,14 @@ while True:
                    displayIP()
 
                else:
-                   lcd.display(displayNow + " ---> ON", 0)
+                   lcd.display("Now: " + displayNow + " ->ON", 0)
                    lcd.display(displayTXT, 1)
 
            else:
                if(ii==0):
                    displayIP()
                else:
-                   lcd.display(displayNow + " ---> OFF", 0)
+                   lcd.display("Now: " + displayNow + " ->OFF", 0)
 
                lcd.display("Next "+start.strftime('%H:%M') + "-" + end.strftime('%H:%M'), 1)
 
