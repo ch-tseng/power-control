@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import urllib.request
 import RPi.GPIO as GPIO
 import datetime
 import os.path as path
@@ -61,7 +62,7 @@ def displayIP():
     if(ii_net>=100): ii_net=0
 
 #Read schedule file
-def readSchedule():
+def readSchedule_local():
     global startList, endList, lastDate
     my_date = date.today()
 
@@ -100,8 +101,61 @@ def readSchedule():
 
         lastDate = my_date
 
+def readSchedule_remote(reRead):
+    global startList, endList, lastDate
+    my_date = date.today()
+
+    if(my_date != lastDate or reRead==True):
+        url = "https://raw.githubusercontent.com/ch-tseng/power-control/master/schedules/" + calendar.day_name[my_date.weekday()] + ".txt"
+        print("re-read URL:", url)
+
+        startList = []
+        endList = []
+
+        request = urllib.request.Request(url)
+        response = urllib.request.urlopen(request)
+        f = response.read().decode('utf-8')
+        #f = f.replace("\n","").replace("\x13","")
+        print("F:", f)
+        ff = f.split("\n")
+
+        for lineString in ff:
+            lineString = lineString.strip()
+
+            if(len(lineString)>0):
+                #lineString = line.replace("\n","").replace("\x13","")
+                print("Line=",lineString)
+                (startTime, endTime)  = (lineString.split("~"))
+                hms_s = startTime.split(":")
+                hms_e = endTime.split(":")
+
+                if(int(hms_s[0])>23): hms_s[0]="23"
+                if(int(hms_e[0])>23): hms_e[0]="23"
+                if(int(hms_s[1])>59): hms_s[1]="59"
+                if(int(hms_e[1])>59): hms_e[1]="59"
+                if(int(hms_s[2])>59): hms_s[2]="59"
+                if(int(hms_e[2])>59): hms_e[2]="59"
+
+
+                timeStart = datetime.time(int(hms_s[0]), int(hms_s[1]), int(hms_s[2]))
+                timeEnd = datetime.time(int(hms_e[0]), int(hms_e[1]), int(hms_e[2]))
+
+                startList.append(timeStart)
+                endList.append(timeEnd)
+
+            lastDate = my_date
+
+now_minute = datetime.datetime.now().minute
+last_minute = 99
+
 while True:
-    readSchedule()
+
+    now_minute = datetime.datetime.now().minute
+    if(last_minute != now_minute):
+        readSchedule_remote(True)
+        last_minute = now_minute
+    else:
+        readSchedule_remote(False)
 
     now = datetime.datetime.now().time()
     cmd = 0
@@ -118,6 +172,7 @@ while True:
 
         i += 1
 
+    print("lastCMD:{}, cmd:{}".format(lastCMD, cmd))
     if(lastCMD!=cmd):
         #lcd.display(displayTXT , 1)
         lastCMD = cmd
@@ -126,10 +181,12 @@ while True:
             if(powerStatus == False):
                 GPIO.output(14, GPIO.HIGH)
                 powerStatus = True
+                print("Open the internet")
         else:
             if(powerStatus == True):
                 GPIO.output(14, GPIO.LOW)
                 powerStatus = False
+                print("Poweroff the internet")
 
         time.sleep(1)
 
